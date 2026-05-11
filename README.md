@@ -1,6 +1,9 @@
 # SMS Spam Detector
 
-End-to-end ML classifier for the [UCI SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection) dataset. Predicts whether a text message is spam or legitimate using TF-IDF + hand-crafted features with Logistic Regression. Ships as a Streamlit web app with threshold tuning and feature explainability.
+[![Verify model](https://github.com/xavdesb/sms-spam-detector/actions/workflows/verify.yml/badge.svg)](https://github.com/xavdesb/sms-spam-detector/actions/workflows/verify.yml)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/xavdesb/sms-spam-detector)
+
+End-to-end ML classifier for the [UCI SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection) dataset. Predicts whether a text message is spam or legitimate using TF-IDF + hand-crafted features with a Linear SVM. Ships as a Streamlit web app with threshold tuning, filtering mode presets, and per-message feature explainability.
 
 ## Quick Start
 
@@ -76,9 +79,9 @@ jupyter notebook notebook.ipynb
 
 1. Push this repo to GitHub (include `model.joblib`)
 2. Go to https://share.streamlit.io and sign in with GitHub
-3. New app → select repo → main file: `app.py` → Deploy
+3. **New app** → select `xavdesb/sms-spam-detector` → main file: `app.py` → **Deploy**
 
-No training step is needed in the cloud — `model.joblib` is pre-built and committed.
+No training step is needed in the cloud — `model.joblib` is pre-built and committed. The CI workflow (`verify.yml`) confirms it loads correctly on every push.
 
 ## Key Design Decisions
 
