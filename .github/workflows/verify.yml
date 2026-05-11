@@ -1,0 +1,29 @@
+name: Verify model
+
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify model loads and predicts
+        run: |
+          python -c "
+          import joblib
+          from features import to_dataframe, MessageFeatureExtractor
+          pipeline = joblib.load('model.joblib')
+          proba = pipeline.predict_proba(['FREE PRIZE WINNER CALL NOW!!!', 'see you at lunch'])
+          spam_idx = list(pipeline.classes_).index('spam')
+          assert proba[0, spam_idx] > 0.5, f'Expected spam, got {proba[0, spam_idx]:.3f}'
+          assert proba[1, spam_idx] < 0.5, f'Expected ham, got {proba[1, spam_idx]:.3f}'
+          print('Model verification: PASSED')
+          "

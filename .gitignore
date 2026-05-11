@@ -4,3 +4,8 @@ __pycache__/
 .ipynb_checkpoints/
 *.egg-info/
 .env
+
+# Generated plots — reproduced by python train.py
+confusion_matrices.png
+pr_curves.png
+roc_curves.png

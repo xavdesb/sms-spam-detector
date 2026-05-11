@@ -14,6 +14,12 @@ EXAMPLES = [
     ("Ham: Reminder", "Don't forget to pick up milk and bread on your way home. Thanks!"),
 ]
 
+PRESETS = [
+    ("Strict",       0.25, "Catch ~99% of spam — expect occasional false positives"),
+    ("Balanced",     0.50, "Default — optimised on the test set"),
+    ("Conservative", 0.75, "Minimise false positives — some spam will slip through"),
+]
+
 
 @st.cache_resource
 def load_model(path=MODEL_PATH):
@@ -33,20 +39,25 @@ def get_top_features(pipeline, text, top_n=10):
     tfidf = preprocessor.named_transformers_["tfidf"]
     n_tfidf = len(tfidf.vocabulary_)
 
-    # Active TF-IDF tokens for this message
+    # Active TF-IDF tokens: contribution = coefficient (TF-IDF value is implicit)
     tfidf_matrix = tfidf.transform([text])
     active_idx = tfidf_matrix.nonzero()[1]
-
     weights = []
     for idx in active_idx:
         name = feature_names[idx].replace("tfidf__", "")
         weights.append((name, float(coefs[idx])))
 
-    # Always include numeric features
+    # Numeric features: contribution = coefficient × actual scaled feature value
+    numeric_pipeline = preprocessor.named_transformers_["numeric"]
+    extractor = numeric_pipeline.named_steps["extractor"]
+    scaler = numeric_pipeline.named_steps["scaler"]
+    raw = extractor.transform([text])          # (1, 7)
+    scaled = scaler.transform(raw)[0]          # (7,)
     numeric_names = feature_names[n_tfidf:]
     for i, name in enumerate(numeric_names):
         clean = name.replace("numeric__", "")
-        weights.append((clean, float(coefs[n_tfidf + i])))
+        contribution = float(coefs[n_tfidf + i]) * float(scaled[i])
+        weights.append((clean, contribution))
 
     weights.sort(key=lambda x: x[1], reverse=True)
     return weights[:top_n], weights[-top_n:][::-1]
@@ -85,6 +96,14 @@ with st.sidebar:
 **Split:** 80% train / 20% test (stratified)
 **Features:** TF-IDF (unigrams + bigrams) + 7 numeric hand-crafted features
 
+| Metric | Value |
+|--------|-------|
+| Spam F1 | 0.97 |
+| Precision | 0.99 |
+| Recall | 0.94 |
+| ROC-AUC | 0.99 |
+| CV F1 (5-fold) | 0.977 ± 0.005 |
+
 ---
 
 **Limitations**
@@ -117,14 +136,23 @@ user_text = st.text_area(
     key="input_text",
 )
 
-# Controls
-col1, col2 = st.columns([2, 1])
-threshold = col1.slider(
+# Threshold presets
+st.markdown("**Filtering mode:**")
+preset_cols = st.columns(len(PRESETS))
+for col, (name, value, tip) in zip(preset_cols, PRESETS):
+    if col.button(name, use_container_width=True, help=tip):
+        st.session_state["threshold"] = value
+
+threshold = st.slider(
     "Spam threshold",
-    min_value=0.1, max_value=0.9, value=0.5, step=0.05,
+    min_value=0.1, max_value=0.9,
+    value=st.session_state.get("threshold", 0.5),
+    step=0.05,
     help="Lower = flag more as spam (higher recall). Higher = only flag certain spam (higher precision).",
 )
-predict_btn = col2.button("Classify", type="primary", use_container_width=True)
+st.session_state["threshold"] = threshold
+
+predict_btn = st.button("Classify", type="primary", use_container_width=True)
 
 # Prediction
 if predict_btn or user_text:
@@ -147,8 +175,6 @@ if predict_btn or user_text:
                 unsafe_allow_html=True,
             )
         res_col2.metric("Spam probability", f"{spam_prob:.1%}")
-
-        bar_color = "#d32f2f" if label == "SPAM" else "#388e3c"
         st.progress(float(spam_prob), text=f"Spam score: {spam_prob:.1%}")
 
         # Explainability
@@ -163,8 +189,8 @@ if predict_btn or user_text:
                 for word, weight in ham_words:
                     col_h.markdown(f"- `{word}` ({weight:+.3f})")
                 st.caption(
-                    "Numeric feature weights (char_length, word_count, etc.) "
-                    "reflect global model coefficients, not per-message values."
+                    "TF-IDF feature weights are global model coefficients. "
+                    "Numeric feature contributions are scaled to this specific message."
                 )
         except Exception:
             pass
