@@ -9,3 +9,6 @@ __pycache__/
 confusion_matrices.png
 pr_curves.png
 roc_curves.png
+
+# Notebook-only artifact — not the production model
+model_lr.joblib

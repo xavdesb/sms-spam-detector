@@ -152,10 +152,17 @@ threshold = st.slider(
 )
 st.session_state["threshold"] = threshold
 
-predict_btn = st.button("Classify", type="primary", use_container_width=True)
+with st.form("classify_form"):
+    user_text = st.text_area(
+        "Message",
+        value=st.session_state.get("input_text", ""),
+        height=120,
+        placeholder="Enter an SMS message here...",
+    )
+    submitted = st.form_submit_button("Classify", type="primary", use_container_width=True)
 
 # Prediction
-if predict_btn or user_text:
+if submitted:
     if not user_text.strip():
         st.warning("Please enter a message to classify.")
     else:
